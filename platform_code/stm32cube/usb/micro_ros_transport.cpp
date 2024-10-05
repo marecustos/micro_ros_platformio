@@ -84,6 +84,7 @@ bool platformio_transport_open(struct uxrCustomTransport * transport)
   if(!initialized)
   {
     USBD_Interface_fops_FS.TransmitCplt = CDC_TransmitCplt_FS;
+    USBD_Interface_fops_FS.Receive = CDC_Receive_FS;
     initialized = true;    
   }
   return true;
