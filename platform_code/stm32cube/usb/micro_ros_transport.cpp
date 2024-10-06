@@ -59,11 +59,11 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   if((tailIndex + * Len) > USB_BUFFER_SIZE)
   {
     size_t firstSecionSize = USB_BUFFER_SIZE - tailIndex ; 
-    size_t seconSectionSize = *Len - section1 ;
+    size_t secondSectionSize = *Len - firstSecionSize ;
     // copy first section in the receive buffer  
     memcpy((void*)&rxBuffer[tailIndex],Buf,firstSecionSize);
     // append second section to receive buffer 
-    memcpy((void*)&rxBuffer[0],Buf,secondSecionSize);
+    memcpy((void*)&rxBuffer[0],Buf,secondSectionSize);
     // where next data will be stored 
     tailIndex = secondSectionSize ; 
   }
@@ -98,7 +98,7 @@ bool platformio_transport_close(struct uxrCustomTransport * transport)
 size_t platformio_transport_write(struct uxrCustomTransport * transport, const uint8_t *buf, size_t len, uint8_t *errcode)
 {
   //Transmit data
-  uint8_t USBstatus = CDC_Transmit_FS(buf,len);
+  uint8_t USBstatus = CDC_Transmit_FS((uint8_t *) buf , len);
   //Transmission error 
   if(USBstatus != USBD_OK )
   {
@@ -107,7 +107,7 @@ size_t platformio_transport_write(struct uxrCustomTransport * transport, const u
   //Start time of transmission 
   int64_t start = HAL_GetTick();
   // wiat while transmission is not completed and write timeout is not exceeded 
-  while(!USBCDC_Transmit_Cplt && (HAL_GetTick-start) < WRITE_TIMEOUT_MS)
+  while(!USBCDC_Transmit_Cplt && (HAL_GetTick()-start) < WRITE_TIMEOUT_MS)
   {
     HAL_Delay(1);  
   }
@@ -131,7 +131,7 @@ size_t platformio_transport_read(struct uxrCustomTransport * transport, uint8_t 
     while(headIndex!=tailIndex && readed < len)
     { 
       // copies received data in buf 
-      buf[readed]=rxBuffer[headIndex] : 
+      buf[readed]=rxBuffer[headIndex] ; 
       // increment head index making sure it does not exceed the USB buffer size 
       headIndex = (headIndex+1) % USB_BUFFER_SIZE ; 
       // increment readed bytes 
