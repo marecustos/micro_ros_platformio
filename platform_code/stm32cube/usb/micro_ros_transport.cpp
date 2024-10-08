@@ -31,15 +31,15 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len);
 #define WRITE_TIMEOUT_MS 100U
 
 // Static buffer to hold received data
-static uint8_t rxBuffer[USB_BUFFER_SIZE] = {0};
+volatile uint8_t rxBuffer[USB_BUFFER_SIZE] = {0};
 //Index where data is read from 
-static size_t headIndex = 0 ; 
+volatile size_t headIndex = 0 ; 
 //Index where new data is written to 
-static size_t tailIndex = 0 ;
+volatile size_t tailIndex = 0 ;
 //Transmission complete indicator 
-static volatile bool USBCDC_Transmit_Cplt = false;
+volatile bool USBCDC_Transmit_Cplt = false;
 //USb initialization indicator 
-static bool initialized = false ; 
+bool initialized = false ; 
 
 static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 {
@@ -72,7 +72,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
     // copy data to the receive buffer 
     memcpy((void*)&rxBuffer[tailIndex],Buf,*Len);
     // where next data will be stored 
-    tailIndex = *Len ; 
+    tailIndex += *Len ; 
   }
   USBD_CDC_ReceivePacket(&hUsbDeviceFS); 
   return USBD_OK ; 
@@ -105,9 +105,9 @@ size_t platformio_transport_write(struct uxrCustomTransport * transport, const u
     return 0 ;  
   }
   //Start time of transmission 
-  int64_t start = HAL_GetTick();
+  int64_t start = uxr_millis();
   // wiat while transmission is not completed and write timeout is not exceeded 
-  while(!USBCDC_Transmit_Cplt && (HAL_GetTick()-start) < WRITE_TIMEOUT_MS)
+  while(!USBCDC_Transmit_Cplt && (uxr_millis()-start) < WRITE_TIMEOUT_MS)
   {
     HAL_Delay(1);  
   }
@@ -122,7 +122,7 @@ size_t platformio_transport_write(struct uxrCustomTransport * transport, const u
 size_t platformio_transport_read(struct uxrCustomTransport * transport, uint8_t *buf, size_t len, int timeout, uint8_t *errcode)
 {
   //Start time 
-  int64_t start = HAL_GetTick();
+  int64_t start = uxr_millis();
   size_t readed = 0 ; 
   // do while the timeout  is not exceeded 
   do
@@ -139,7 +139,7 @@ size_t platformio_transport_read(struct uxrCustomTransport * transport, uint8_t 
     }
     HAL_Delay(1);
     
-  } while ((HAL_GetTick()-start)<timeout);
+  } while ((uxr_millis()-start)<timeout);
   return readed ; 
  
 }
