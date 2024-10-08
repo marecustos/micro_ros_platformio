@@ -25,7 +25,11 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum);
 // USB CDC Receive function (rewriting this function to copy received data to rxBuffer)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len);
+// USB CDC Control function 
+static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
 
+// Line coding: Rate: 115200bps; CharFormat: 1 Stop bit; Parity: None; Data: 8 bits
+static uint8_t line_coding[7] = {0x00, 0xC2, 0x01, 0x00, 0x00, 0x00, 0x08};
 
 #define USB_BUFFER_SIZE 2048
 #define WRITE_TIMEOUT_MS 100U
@@ -40,6 +44,34 @@ volatile size_t tailIndex = 0 ;
 volatile bool USBCDC_Transmit_Cplt = false;
 //USb initialization indicator 
 bool initialized = false ; 
+
+
+static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
+{
+  switch(cmd)
+  {
+    case CDC_SET_LINE_CODING:
+      memcpy(line_coding, pbuf, sizeof(line_coding));
+      break;
+
+    case CDC_GET_LINE_CODING:
+      memcpy(pbuf, line_coding, sizeof(line_coding));
+      break;
+
+    case CDC_SEND_ENCAPSULATED_COMMAND:
+    case CDC_GET_ENCAPSULATED_RESPONSE:
+    case CDC_SET_COMM_FEATURE:
+    case CDC_GET_COMM_FEATURE:
+    case CDC_CLEAR_COMM_FEATURE:
+    case CDC_SET_CONTROL_LINE_STATE:
+    case CDC_SEND_BREAK:
+    default:
+      break;
+  }
+
+return USBD_OK;
+}
+
 
 static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 {
@@ -84,6 +116,7 @@ bool platformio_transport_open(struct uxrCustomTransport * transport)
   if(!initialized)
   {
     USBD_Interface_fops_FS.TransmitCplt = CDC_TransmitCplt_FS;
+    USBD_Interface_fops_FS.Control = CDC_Control_FS;
     USBD_Interface_fops_FS.Receive = CDC_Receive_FS;
     initialized = true;    
   }
@@ -126,17 +159,23 @@ size_t platformio_transport_read(struct uxrCustomTransport * transport, uint8_t 
   size_t readed = 0 ; 
   // do while the timeout  is not exceeded 
   do
-  {
-    // while there is data available and the length has not been reached 
-    while(headIndex!=tailIndex && readed < len)
-    { 
-      // copies received data in buf 
-      buf[readed]=rxBuffer[headIndex] ; 
-      // increment head index making sure it does not exceed the USB buffer size 
-      headIndex = (headIndex+1) % USB_BUFFER_SIZE ; 
-      // increment readed bytes 
-      readed++;
-    }
+  { // check if there is data avialable in the buffer 
+    if ( headIndex!=tailIndex )
+    {
+      // copy data until the buffer is empty or copied the requested length 
+      while(headIndex!=tailIndex && readed < len)
+      { 
+        // copies received data in buf 
+        buf[readed]=rxBuffer[headIndex] ; 
+        // increment head index making sure it does not exceed the USB buffer size 
+        headIndex = (headIndex+1) % USB_BUFFER_SIZE ; 
+        // increment readed bytes 
+        readed++;
+      }
+
+      break ; 
+    }  
+    
     HAL_Delay(1);
     
   } while ((uxr_millis()-start)<timeout);
