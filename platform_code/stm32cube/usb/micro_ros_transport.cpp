@@ -14,8 +14,7 @@
 extern "C" {
 #ifdef MICRO_ROS_TRANSPORT_USB_CDC 
 
-//USB Device Handler 
-extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+
 //Initialization Handler 
 extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 extern USBD_HandleTypeDef hUsbDeviceFS;
