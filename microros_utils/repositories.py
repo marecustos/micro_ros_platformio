@@ -36,6 +36,9 @@ class Repository:
             return
 
         command = "git clone -b {} {} {}".format(self.branch, self.url, self.path)
+        if (self.name == "rmw-microxrcedds") :
+                command = "git clone -b {} {} {} && cd {} && git reset --hard c31887f38c708f085d4a2117e47055e0176acc1e".format(self.branch, self.url, self.path,self.path)
+                print(command)
         result = run_cmd(command)
 
         if 0 != result.returncode:
